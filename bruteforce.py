@@ -21,8 +21,12 @@ def read_data(csv_file_pah):
         return result
     with f:
         reader = csv.reader(f)
+        #  clean first line "header"
+        next(reader)
         for rows in reader:
-            result.append([rows[0], int(rows[1]), int(rows[2])])
+            rows_clean = clean_transform_data(rows)
+            if rows_clean:
+                result.append(rows_clean)
     return result
 
 
@@ -40,6 +44,23 @@ def combinations_array(data_action):
         """ return combination for i elements """
         result.append(list(combinations(data_action, nbr_elements)))
     return result
+
+
+def clean_transform_data(data):
+    """
+    Convert str Price/gain to int
+    multiple the price and the gain by 100 to have integers
+    withdraws the actions with a zero price
+    returns the absolute value for the prices of the actions
+    :param data:  Array
+    :return:  Array
+    """
+    data[1] = abs(float(data[1]))
+    data[2] = float(data[2])
+    if data[1] == 0 or data[2] == 0:
+        return False
+    else:
+        return data
 
 
 def combinations2_array(data_action):
@@ -147,9 +168,9 @@ def display_best_combination(list_action, spent_action, gain_action):
         s += "\n"+action[0].split("-")[1].ljust(margin, " ")
         s += str(action[1]).ljust(margin, " ")
         s += str(action[2]).ljust(margin, " ")
-    s += "\n\nMoney spent on stocks: {}".format(spent_action)
-    s += "\nTotal gain Net: {}".format(gain_action)
-    s += "\nTotal gain Brut: {}".format(gain_action+spent_action)
+    s += "\n\nTotal cost: {}".format(spent_action)
+    s += "\nProfit: {}".format(gain_action)
+    s += "\nProfit %: {0:.2f}".format(gain_action/spent_action*100)
     print(s)
 
 
@@ -157,6 +178,7 @@ def main():
     tracemalloc.start()
     """ Read Data"""
     data = read_data('actions.csv')
+    # data = read_data('dataset1_Python+P7.csv')
     """ List all combination """
     combinations_actions = combinations_array(data)
     """ Return best combination, sum spent of combination, gain of combination"""
