@@ -20,33 +20,31 @@ def read_data(csv_file_pah):
         return result
     with f:
         reader = csv.reader(f)
-        #  newt first line "header"
-        header = next(reader)
+        next(reader)
         for rows in reader:
-            rows_clean = clean_transform_data(rows)
-            if rows_clean:
-                result.append(rows_clean)
+            result.append(rows)
     return result
 
 
-def clean_transform_data(data):
+def check_max_spent(actions_list):
     """
-    Convert str Price/gain to int
-    multiple the price and the gain by 100 to have integers
-    withdraws the actions with a zero price
-    returns the absolute value for the prices of the actions
-    :param data:  Array
-    :return:  Array
+    :param
+        - actions_list: array =>  actions list [['name','price','interest'],....]
+    :return:
+        if sum action is > MAX_SPENT
+            return  boolean =>  False
+        else
+            return  integer => sum price of all action
     """
-    data[1] = abs(float(data[1]))
-    data[2] = float(data[2])
-    if data[1] == 0 or data[2] == 0:
-        return False
-    else:
-        return data
+    sum_action = 0
+    for actions in actions_list:
+        sum_action += int(actions[1])
+        if sum_action > MAX_SPENT:
+            return False
+    return sum_action
 
 
-def find_combinations_dynamic(max_spent, actions):
+def find_best_combinations(max_spent, actions):
     """
     Return best combination, sum spent of combination, gain of combination
     :param
@@ -54,14 +52,16 @@ def find_combinations_dynamic(max_spent, actions):
         - actions :  Array  [['name','price','interest'],....],['name','price','interest'],....]]
     :return:
         - result: Array => best combination action
+        - sum_spent: Integer => sum spent for best combination action
+        - interest_max: Float => gain for best combination action
     """
 
     result = [[0 for x in range(max_spent+1)] for x in range(len(actions)+1)]
     for i in range(1, len(actions)+1):
         for price in range(1, max_spent+1):
-            if actions[i-1][1] <= price:
+            if int(actions[i-1][1]) <= price:
                 result[i][price] = max(
-                    int(actions[i-1][2]*actions[i - 1][1]) +
+                    int(actions[i-1][2])*int(actions[i-1][1]) +
                     result[i-1][price-int(actions[i-1][1])], result[i-1][price])
             else:
                 result[i][price] = result[i-1][price]
@@ -71,35 +71,11 @@ def find_combinations_dynamic(max_spent, actions):
     result_combination = []
     while s >= 0 and n >= 0:
         action = actions[n-1]
-        if result[n][s] == result[n-1][s - int(action[1])] + int(action[2]*action[1]):
+        if result[n][s] == result[n-1][s - int(action[1])] + int(action[2])*int(action[1]):
             result_combination.append(action)
             s -= int(action[1])
         n -= 1
-
-    return result_combination
-
-
-def find_combinations_glutton(data_dynamic):
-    """
-
-    :param
-        - data_dynamic: Array
-    :return:
-        - combinations: Array => best combination action
-        - spent: Float  => sum spent for best combination action
-        -  gain; Float => gain for best combination action
-    """
-    result = sorted(data_dynamic, key=lambda x: x[1], reverse=True)
-    combinations = []
-    spent = 0
-    gain = 0
-    for action in result:
-        if spent + action[1] <= 500:
-            spent += action[1]
-            gain += action[1]*action[2]
-            combinations.append(action)
-
-    return combinations, spent, gain/100
+    return result_combination, MAX_SPENT-s, result[-1][-1]/100
 
 
 def display_best_combination(list_action, spent_action, gain_action):
@@ -118,28 +94,25 @@ def display_best_combination(list_action, spent_action, gain_action):
         s += "\n"+action[0].split("-")[1].ljust(margin, " ")
         s += str(action[1]).ljust(margin, " ")
         s += str(action[2]).ljust(margin, " ")
-    s += "\n\nMoney spent on stocks: {0:.10f}".format(spent_action)
-    s += "\nTotal gain Net: {0:.6f}".format(gain_action)
-    s += "\nTotal gain Brut: {0:.6f}".format(gain_action+spent_action)
+    s += "\n\nTotal cost: {}".format(spent_action)
+    s += "\nProfit: {}".format(gain_action)
+    s += "\nProfit %: {0:.2f}".format(gain_action/spent_action*100)
     print(s)
 
 
 def main():
-    #tracemalloc.start()
+    tracemalloc.start()
     """ Read Data"""
-    #data = read_data('actions.csv')
-    data = read_data('dataset1_Python+P7.csv')
-    #data = read_data('dataset2_Python+P7.csv')
+    data = read_data('actions.csv')
     """ Return best combination, sum spent of combination, gain of combination"""
-    best_combination = find_combinations_dynamic(MAX_SPENT, data)
-    best_combination, spent, gain = find_combinations_glutton(best_combination)
+    best_combination, spent, gain = find_best_combinations(MAX_SPENT, data)
     """ Display best combination, sum spent, gain """
     display_best_combination(best_combination, spent, gain)
-    #snapshot = tracemalloc.take_snapshot()
-    #top_stats = snapshot.statistics('lineno')
-    #print("\n[ Top 4 memory usage ]\n")
-    #for stat in top_stats[:4]:
-    #    print(stat)
+    snapshot = tracemalloc.take_snapshot()
+    top_stats = snapshot.statistics('lineno')
+    print("\n[ Top 4 memory usage ]\n")
+    for stat in top_stats[:4]:
+        print(stat)
 
 
 if __name__ == '__main__':
